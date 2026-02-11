@@ -68,6 +68,38 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
     });
   }
 });
+// @route   GET /api/admin/verifications/pending
+// @desc    Get pending teacher verifications
+// @access  Private/Admin
+router.get('/verifications/pending', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        t.id, t.user_id, u.name, u.email, u.profile_picture,
+        t.bio, t.verification_status, t.verification_notes, t.created_at,
+        ARRAY_AGG(DISTINCT s.name) as subject_names
+      FROM teachers t
+      JOIN users u ON t.user_id = u.id
+      LEFT JOIN teacher_subjects ts ON t.id = ts.teacher_id
+      LEFT JOIN subjects s ON ts.subject_id = s.id
+      WHERE t.verification_status = 'pending'
+      GROUP BY t.id, u.id
+      ORDER BY t.created_at DESC
+    `);
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Get pending verifications error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get pending verifications'
+    });
+  }
+});
 
 // @route   GET /api/admin/recent-activity
 // @desc    Get recent activity
