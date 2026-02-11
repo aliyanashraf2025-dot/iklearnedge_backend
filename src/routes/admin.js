@@ -68,20 +68,37 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
     });
   }
 });
+
 // @route   GET /api/admin/verifications/pending
 // @desc    Get pending teacher verifications
 // @access  Private/Admin
 router.get('/verifications/pending', authenticate, requireAdmin, async (req, res) => {
   try {
+    // ✅ FIXED: Return fields that match frontend expectations
     const result = await query(`
       SELECT 
-        t.id, t.user_id, u.name, u.email, u.profile_picture,
-        t.bio, t.verification_status, t.verification_notes, t.created_at,
-        ARRAY_AGG(DISTINCT s.name) as subject_names
+        t.id,
+        t.user_id,
+        u.name as full_name,
+        u.name,
+        u.email,
+        u.profile_picture,
+        u.profile_picture as profilePicture,
+        t.bio,
+        t.verification_status,
+        t.verification_notes,
+        t.created_at,
+        t.created_at as createdAt,
+        t.qualification,
+        t.id_document,
+        t.id_document as identityDocument,
+        COALESCE(
+          ARRAY_AGG(DISTINCT ts.subject_id) FILTER (WHERE ts.subject_id IS NOT NULL),
+          ARRAY[]::uuid[]
+        ) as subjects
       FROM teachers t
       JOIN users u ON t.user_id = u.id
       LEFT JOIN teacher_subjects ts ON t.id = ts.teacher_id
-      LEFT JOIN subjects s ON ts.subject_id = s.id
       WHERE t.verification_status = 'pending'
       GROUP BY t.id, u.id
       ORDER BY t.created_at DESC
@@ -96,7 +113,8 @@ router.get('/verifications/pending', authenticate, requireAdmin, async (req, res
     console.error('Get pending verifications error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get pending verifications'
+      message: 'Failed to get pending verifications',
+      error: error.message
     });
   }
 });
@@ -125,8 +143,8 @@ router.get('/recent-activity', authenticate, requireAdmin, async (req, res) => {
         'booking' as type
       FROM bookings b
       JOIN students st ON b.student_id = st.id
-      JOIN users su ON st.user_id = su.id
       JOIN teachers t ON b.teacher_id = t.id
+      JOIN users su ON st.user_id = su.id
       JOIN users tu ON t.user_id = tu.id
       JOIN subjects s ON b.subject_id = s.id
       ORDER BY b.created_at DESC
