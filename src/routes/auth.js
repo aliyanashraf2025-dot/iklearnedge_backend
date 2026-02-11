@@ -7,10 +7,10 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Generate JWT token
-const generateToken = (userId) => {
+// Generate JWT token - UPDATED to include role
+const generateToken = (userId, role) => {
   return jwt.sign(
-    { userId },
+    { userId, role }, // Added role to token payload
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
@@ -89,8 +89,8 @@ router.post('/register', [
       );
     }
 
-    // Generate token
-    const token = generateToken(user.id);
+    // Generate token - UPDATED to include role
+    const token = generateToken(user.id, user.role);
 
     res.status(201).json({
       success: true,
@@ -158,8 +158,8 @@ router.post('/login', [
       });
     }
 
-    // Generate token
-    const token = generateToken(user.id);
+    // Generate token - UPDATED to include role
+    const token = generateToken(user.id, user.role);
 
     res.json({
       success: true,
